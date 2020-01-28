@@ -77,7 +77,12 @@
                             v-on:click.passive="knowledge = i"
                         ) {{v}}
         .card.mt-3
-            .card-header Action Log
+            .card-header 
+                | Action Log
+                a.text-danger.float-right(
+                    href="#"
+                    v-on:click.prevent="actionLog = []"
+                ) Clear All
             .card-body
                 ul
                     li(v-for="(entry, i) in actionLog" :key="i") {{entry}}
@@ -87,6 +92,7 @@
 import Vue from "vue";
 import { createComponent, ref, computed, watch } from "@vue/composition-api";
 import allCharacterData from "./characters.json";
+import useLocalStorageRef from "./useLocalStorageRef";
 
 const characterColorMap = {
     red: "#e85752",
@@ -99,12 +105,12 @@ const characterColorMap = {
 
 export default createComponent({
     setup() {
-        const character = ref(0);
-        const actionLog = ref<string[]>([]);
-        const speed = ref(0);
-        const might = ref(0);
-        const sanity = ref(0);
-        const knowledge = ref(0);
+        const character = useLocalStorageRef("character", 0);
+        const actionLog = useLocalStorageRef<string[]>("actionLog", []);
+        const speed = useLocalStorageRef("speed", 0);
+        const might = useLocalStorageRef("might", 0);
+        const sanity = useLocalStorageRef("sanity", 0);
+        const knowledge = useLocalStorageRef("knowledge", 0);
 
         function addAction(entry: string): void {
             actionLog.value.push(`[${new Date().toLocaleString()}]: ${entry}`);
