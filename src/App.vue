@@ -3,8 +3,13 @@
         h1
             | Betrayal Character Sheet
             |
-            a.btn.btn-outline-primary.float-right(href="https://lixquid.com").
-                lixquid.com
+            .float-right
+                button.btn.btn-outline-danger.mr-3(
+                    v-on:click.passive="fullReset"
+                    title="Full Reset"
+                ) &#x267B;
+                a.btn.btn-outline-primary(href="https://lixquid.com").
+                    lixquid.com
         .card.mt-5
             .card-header.transition-background(
                 :style="{background: characterColor}"
@@ -79,13 +84,18 @@
         .card.mt-3
             .card-header
                 | Action Log
-                a.text-danger.float-right(
-                    href="#"
-                    v-on:click.prevent="actionLog = []"
-                ) Clear All
+                .float-right
+                    a.text-secondary.mr-3(
+                        href="#"
+                        v-on:click.prevent="actionLog.oldestFirst = !actionLog.oldestFirst"
+                    ) {{actionLog.oldestFirst ? "Descending" : "Ascending"}}
+                    a.text-danger(
+                        href="#"
+                        v-on:click.prevent="actionLog.log = []"
+                    ) Clear All
             .card-body
                 ul
-                    li(v-for="(entry, i) in actionLog" :key="i") {{entry}}
+                    li(v-for="(entry, i) in sortedLog" :key="i") {{entry}}
 </template>
 
 <script lang="ts">
@@ -112,7 +122,10 @@ export default createComponent({
             sanity: 0,
             knowledge: 0
         });
-        const actionLog = useLocalStorageRef<string[]>("actionLog", []);
+        const actionLog = useLocalStorageRef("actionLog", {
+            log: [] as string[],
+            oldestFirst: true
+        });
 
         function addWatch<T>(
             val: () => T,
@@ -122,7 +135,7 @@ export default createComponent({
                 val,
                 dualbounce((n, o) => {
                     if (n === o) return;
-                    actionLog.value.push(
+                    actionLog.value.log.push(
                         `[${new Date().toLocaleString()}]: ${str(n, o)}`
                     );
                 }, 1000),
@@ -139,8 +152,6 @@ export default createComponent({
         const characterData = computed(
             () => allCharacterData[character.value.character]
         );
-        console.log(character.value.character);
-        console.log(allCharacterData[character.value.character]);
 
         addWatch(
             () => character.value.speed,
@@ -183,13 +194,33 @@ export default createComponent({
                     characterData.value.color as keyof typeof characterColorMap
                 ]
         );
+        const sortedLog = computed(() =>
+            actionLog.value.oldestFirst
+                ? actionLog.value.log
+                : actionLog.value.log.slice().reverse()
+        );
+
+        function fullReset(): void {
+            if (
+                !confirm(
+                    "This will wipe all local settings, restoring the app from a completely clean slate. This cannot be undone. Are you sure you want to do this?"
+                )
+            )
+                return;
+            localStorage.clear();
+            window.location.reload();
+        }
 
         return {
             character,
             actionLog,
+            sortedLog,
+
             characterData,
             characterColor,
-            allCharacterData
+            allCharacterData,
+
+            fullReset
         };
     }
 });
