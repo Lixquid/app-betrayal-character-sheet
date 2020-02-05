@@ -9,7 +9,7 @@
             .card-header.transition-background(
                 :style="{background: characterColor}"
             )
-                select.custom-select(v-model.number="character")
+                select.custom-select(v-model.number="character.character")
                     option(
                         v-for="(char, i) in allCharacterData"
                         :key="i"
@@ -22,14 +22,14 @@
                         type="range"
                         min="0"
                         max="7"
-                        v-model.number="speed"
+                        v-model.number="character.speed"
                     )
                     .d-flex.justify-content-between
                         span.h4(
                             v-for="(v, i) in characterData.speed"
                             :key="i"
                             :class=`{'text-primary': i === characterData.initialSpeed}`
-                            v-on:click.passive="speed = i"
+                            v-on:click.passive="character.speed = i"
                         ) {{v}}
                 label.w-100
                     | Might
@@ -37,14 +37,14 @@
                         type="range"
                         min="0"
                         max="7"
-                        v-model.number="might"
+                        v-model.number="character.might"
                     )
                     .d-flex.justify-content-between
                         span.h4(
                             v-for="(v, i) in characterData.might"
                             :key="i"
                             :class=`{'text-primary': i === characterData.initialMight}`
-                            v-on:click.passive="might = i"
+                            v-on:click.passive="character.might = i"
                         ) {{v}}
                 label.w-100
                     | Sanity
@@ -52,14 +52,14 @@
                         type="range"
                         min="0"
                         max="7"
-                        v-model.number="sanity"
+                        v-model.number="character.sanity"
                     )
                     .d-flex.justify-content-between
                         span.h4(
                             v-for="(v, i) in characterData.sanity"
                             :key="i"
                             :class=`{'text-primary': i === characterData.initialSanity}`
-                            v-on:click.passive="sanity = i"
+                            v-on:click.passive="character.sanity = i"
                         ) {{v}}
                 label.w-100
                     | Knowledge
@@ -67,17 +67,17 @@
                         type="range"
                         min="0"
                         max="7"
-                        v-model.number="knowledge"
+                        v-model.number="character.knowledge"
                     )
                     .d-flex.justify-content-between
                         span.h4(
                             v-for="(v, i) in characterData.knowledge"
                             :key="i"
                             :class=`{'text-primary': i === characterData.initialKnowledge}`
-                            v-on:click.passive="knowledge = i"
+                            v-on:click.passive="character.knowledge = i"
                         ) {{v}}
         .card.mt-3
-            .card-header 
+            .card-header
                 | Action Log
                 a.text-danger.float-right(
                     href="#"
@@ -92,7 +92,7 @@
 import Vue from "vue";
 import { createComponent, ref, computed, watch } from "@vue/composition-api";
 import allCharacterData from "./characters.json";
-import useLocalStorageRef from "./useLocalStorageRef";
+import { useLocalStorageRef, dualbounce } from "./vueUtilities";
 
 const characterColorMap = {
     red: "#e85752",
@@ -105,78 +105,76 @@ const characterColorMap = {
 
 export default createComponent({
     setup() {
-        const character = useLocalStorageRef("character", 0);
+        const character = useLocalStorageRef("character", {
+            character: 0,
+            speed: 0,
+            might: 0,
+            sanity: 0,
+            knowledge: 0
+        });
         const actionLog = useLocalStorageRef<string[]>("actionLog", []);
-        const speed = useLocalStorageRef("speed", 0);
-        const might = useLocalStorageRef("might", 0);
-        const sanity = useLocalStorageRef("sanity", 0);
-        const knowledge = useLocalStorageRef("knowledge", 0);
 
-        function addAction(entry: string): void {
-            actionLog.value.push(`[${new Date().toLocaleString()}]: ${entry}`);
+        function addWatch<T>(
+            val: () => T,
+            str: (n: T, o: T) => string | undefined
+        ): void {
+            watch(
+                val,
+                dualbounce((n, o) => {
+                    if (n === o) return;
+                    actionLog.value.push(
+                        `[${new Date().toLocaleString()}]: ${str(n, o)}`
+                    );
+                }, 1000),
+                { lazy: true }
+            );
         }
 
-        watch(
-            character,
-            (newV, oldV) =>
-                addAction(
-                    "Change character from " +
-                        allCharacterData[oldV].name +
-                        " to " +
-                        allCharacterData[newV].name
-                ),
-            { lazy: true }
+        addWatch(
+            () => character.value.character,
+            (n, o) =>
+                `Change character from ${allCharacterData[o].name} to ${allCharacterData[n].name}`
         );
 
-        const characterData = computed(() => allCharacterData[character.value]);
+        const characterData = computed(
+            () => allCharacterData[character.value.character]
+        );
+        console.log(character.value.character);
+        console.log(allCharacterData[character.value.character]);
 
-        watch(
-            speed,
-            (newV, oldV) =>
-                addAction(
-                    `${newV > oldV ? "Increase" : "Decrease"} speed from ${
-                        characterData.value.speed[oldV]
-                    } (step ${oldV + 1}) to ${
-                        characterData.value.speed[newV]
-                    } (step ${newV + 1})`
-                ),
-            { lazy: true }
+        addWatch(
+            () => character.value.speed,
+            (n, o) =>
+                `${n > o ? "Increase" : "Decrease"} speed from ${
+                    characterData.value.speed[o]
+                } (step ${o + 1}) to ${characterData.value.speed[n]} (step ${n +
+                    1})`
         );
-        watch(
-            might,
-            (newV, oldV) =>
-                addAction(
-                    `${newV > oldV ? "Increase" : "Decrease"} might from ${
-                        characterData.value.might[oldV]
-                    } (step ${oldV + 1}) to ${
-                        characterData.value.might[newV]
-                    } (step ${newV + 1})`
-                ),
-            { lazy: true }
+        addWatch(
+            () => character.value.might,
+            (n, o) =>
+                `${n > o ? "Increase" : "Decrease"} might from ${
+                    characterData.value.might[o]
+                } (step ${o + 1}) to ${characterData.value.might[n]} (step ${n +
+                    1})`
         );
-        watch(
-            sanity,
-            (newV, oldV) =>
-                addAction(
-                    `${newV > oldV ? "Increase" : "Decrease"} sanity from ${
-                        characterData.value.sanity[oldV]
-                    } (step ${oldV + 1}) to ${
-                        characterData.value.sanity[newV]
-                    } (step ${newV + 1})`
-                ),
-            { lazy: true }
+        addWatch(
+            () => character.value.sanity,
+            (n, o) =>
+                `${n > o ? "Increase" : "Decrease"} sanity from ${
+                    characterData.value.sanity[o]
+                } (step ${o + 1}) to ${
+                    characterData.value.sanity[n]
+                } (step ${n + 1})`
         );
-        watch(
-            knowledge,
-            (newV, oldV) =>
-                addAction(
-                    `${newV > oldV ? "Increase" : "Decrease"} knowledge from ${
-                        characterData.value.knowledge[oldV]
-                    } (step ${oldV + 1}) to ${
-                        characterData.value.knowledge[newV]
-                    } (step ${newV + 1})`
-                ),
-            { lazy: true }
+        addWatch(
+            () => character.value.knowledge,
+            (n, o) =>
+                `${n > o ? "Increase" : "Decrease"} knowledge from ${
+                    characterData.value.knowledge[o]
+                } (step ${o + 1}) to ${
+                    characterData.value.knowledge[n]
+                } (step ${n + 1})`
         );
 
         const characterColor = computed(
@@ -191,11 +189,7 @@ export default createComponent({
             actionLog,
             characterData,
             characterColor,
-            allCharacterData,
-            speed,
-            might,
-            sanity,
-            knowledge
+            allCharacterData
         };
     }
 });
